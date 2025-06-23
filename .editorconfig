@@ -1,0 +1,38 @@
+
+
+#EditorConfig 的匹配规则是从上往下，即先定义的规则优先级比后定义的优先级要高。
+
+# 告诉 EditorConfig 插件，这是根文件，不用继续往上查找
+root = true
+
+# 匹配全部文件
+[*]
+
+# 设置字符集
+charset=utf-8
+
+# 结尾换行符，可选"lf"、"cr"、"crlf"
+end_of_line=LF
+
+# 在文件结尾插入新行
+insert_final_newline=true
+
+# 缩进风格，可选"space"、"tab"
+indent_style=space
+
+# 缩进的空格数
+indent_size=2
+
+max_line_length = 100
+
+# 匹配 yml 和 yaml、json 结尾的文件
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+# 删除一行中的前后空格
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
