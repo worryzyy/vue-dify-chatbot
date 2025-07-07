@@ -42,7 +42,15 @@ router.beforeEach(async (to, from, next) => {
   const { checkAuthStatus, user } = useAuth()
   
   // 检测OAuth回调
-  const isOAuthCallback = to.query.access_token || to.query.code || to.hash.includes('access_token');
+  const isOAuthCallback = to.query.access_token || to.query.code || to.hash.includes('access_token') || to.query.error;
+  
+  // 检查 OAuth 错误
+  if (to.query.error) {
+    // 显示错误信息并跳转到登录页
+    alert(`登录失败: ${to.query.error_description || to.query.error}`);
+    next('/login');
+    return;
+  }
   
   // 如果是OAuth回调，给更多时间让认证状态更新
   if (isOAuthCallback) {

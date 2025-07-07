@@ -44,6 +44,11 @@ export function useAuth() {
       const result = await authStore.register(credentials);
 
       if (result.success) {
+        // 如果有 message，说明需要邮箱验证，不跳转
+        if (result.message) {
+          return { success: true, message: result.message };
+        }
+        // 否则直接注册成功，跳转到首页
         await router.push('/');
         return { success: true };
       }

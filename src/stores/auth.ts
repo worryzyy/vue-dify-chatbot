@@ -18,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
     return session.value ? session.value.expires_at <= Date.now() / 1000 : true;
   });
 
-  async function login(credentials: LoginRequest) {
+  async function login(credentials: LoginRequest): Promise<{ success: boolean; error?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -32,23 +32,25 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (response.user && response.session) {
         user.value = response.user;
-        session.value = response.session;
+        session.value = {
+          access_token: response.session.access_token,
+          refresh_token: response.session.refresh_token,
+          expires_at: response.session.expires_at,
+        };
         return { success: true };
       }
 
       return { success: false, error: '登录失败' };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '登录失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function register(credentials: RegisterRequest) {
+  async function register(credentials: RegisterRequest): Promise<{ success: boolean; error?: string; message?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -60,25 +62,32 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: response.error };
       }
 
+      // 处理需要邮箱验证的情况
+      if (response.message) {
+        return { success: true, message: response.message };
+      }
+
       if (response.user && response.session) {
         user.value = response.user;
-        session.value = response.session;
+        session.value = {
+          access_token: response.session.access_token,
+          refresh_token: response.session.refresh_token,
+          expires_at: response.session.expires_at,
+        };
         return { success: true };
       }
 
       return { success: false, error: '注册失败' };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '注册失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function loginWithOAuth(request: OAuthLoginRequest) {
+  async function loginWithOAuth(request: OAuthLoginRequest): Promise<{ success: boolean; error?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -92,20 +101,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       // OAuth 登录成功后不会立即返回用户信息
       // 需要等待认证状态变化回调
-      console.log('OAuth 登录请求已发送，等待回调...');
       return { success: true };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '第三方登录失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function logout() {
+  async function logout(): Promise<{ success: boolean; error?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -120,20 +126,17 @@ export const useAuthStore = defineStore('auth', () => {
       session.value = null;
 
       return { success: !response.error };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '登出失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function refreshSession() {
-    if (!session.value)
-      return { success: false, error: '无会话信息' };
+  async function refreshSession(): Promise<{ success: boolean; error?: string }> {
+    if (!session.value) return { success: false, error: '无会话信息' };
 
     loading.value = true;
     error.value = null;
@@ -150,25 +153,27 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (response.user && response.session) {
         user.value = response.user;
-        session.value = response.session;
+        session.value = {
+          access_token: response.session.access_token,
+          refresh_token: response.session.refresh_token,
+          expires_at: response.session.expires_at,
+        };
         return { success: true };
       }
 
       return { success: false, error: '刷新会话失败' };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '刷新会话失败';
       error.value = errorMessage;
       user.value = null;
       session.value = null;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function getCurrentUser() {
+  async function getCurrentUser(): Promise<{ success: boolean; error?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -181,18 +186,16 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       return { success: false, error: '获取用户信息失败' };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取用户信息失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
 
-  async function updateProfile(updates: Partial<UserProfile>) {
+  async function updateProfile(updates: Partial<Pick<UserProfile, 'name' | 'avatar'>>): Promise<{ success: boolean; error?: string }> {
     loading.value = true;
     error.value = null;
 
@@ -209,13 +212,11 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       return { success: true };
-    }
-    catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '更新资料失败';
       error.value = errorMessage;
       return { success: false, error: errorMessage };
-    }
-    finally {
+    } finally {
       loading.value = false;
     }
   }
@@ -225,7 +226,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   let authListenerInitialized = false;
-  let isCheckingSession = false;
+  let unsubscribeAuthListener: (() => void) | null = null;
 
   function initializeAuth() {
     if (authListenerInitialized) {
@@ -233,71 +234,56 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     authListenerInitialized = true;
+
+    // 初始化时检查当前会话
     checkCurrentSession();
 
-    authService.onAuthStateChange(async (userProfile) => {
-      user.value = userProfile;
+    // 监听认证状态变化
+    unsubscribeAuthListener = authService.onAuthStateChange(
+      (event, sessionData, userProfile) => {
+        user.value = userProfile;
+        session.value = sessionData;
 
-      if (userProfile) {
-        try {
-          const { data: { session: supabaseSession } } = await supabase.auth.getSession();
-          if (supabaseSession) {
-            session.value = {
-              access_token: supabaseSession.access_token,
-              refresh_token: supabaseSession.refresh_token,
-              expires_at: supabaseSession.expires_at!,
-            };
-
-            if (window.location.pathname === '/login') {
-              setTimeout(() => {
-                if (isAuthenticated.value || (user.value && session.value)) {
-                  // 使用路由跳转而不是直接修改location
-                  import('../router').then(({ default: router }) => {
-                    router.push('/');
-                  });
-                }
-              }, 1000);
-            }
+        // 如果是登录成功且当前在登录页面，自动跳转
+        if (event === 'SIGNED_IN' && userProfile && sessionData) {
+          if (window.location.pathname === '/login' || window.location.pathname === '/') {
+            setTimeout(() => {
+              import('../router').then(({ default: router }) => {
+                router.push('/');
+              });
+            }, 1000);
           }
         }
-        catch (error) {
-          console.error('获取会话信息失败:', error);
+
+        // 如果是登出，跳转到登录页
+        if (event === 'SIGNED_OUT') {
+          if (window.location.pathname !== '/login') {
+            setTimeout(() => {
+              import('../router').then(({ default: router }) => {
+                router.push('/login');
+              });
+            }, 500);
+          }
         }
       }
-      else {
-        session.value = null;
-      }
-    });
+    );
   }
 
   async function checkCurrentSession() {
-    if (isCheckingSession) {
-      return;
-    }
-
-    isCheckingSession = true;
-
     try {
-      const { data: { session: supabaseSession } } = await supabase.auth.getSession();
+      // 先检查是否有活跃会话
+      const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
+      
+      if (error || !supabaseSession) {
+        user.value = null;
+        session.value = null;
+        return;
+      }
 
-      if (supabaseSession?.user) {
-        let userProfile = await authService.getCurrentUser();
-
-        // 如果查询失败或没有记录，触发器应该已经创建了记录
-        // 但如果仍然没有，我们创建一个临时的用户资料
-        if (!userProfile) {
-          userProfile = {
-            id: supabaseSession.user.id, // 这里使用auth_user_id  
-            email: supabaseSession.user.email || '',
-            name: supabaseSession.user.user_metadata?.name || supabaseSession.user.user_metadata?.full_name || '',
-            avatar: supabaseSession.user.user_metadata?.avatar_url || '',
-            created_at: supabaseSession.user.created_at,
-            updated_at: new Date().toISOString(),
-            auth_user_id: supabaseSession.user.id,
-            provider: supabaseSession.user.app_metadata?.provider || 'unknown'
-          };
-        }
-
+      // 如果有会话，获取用户信息
+      const userProfile = await authService.getCurrentUser();
+      
+      if (userProfile) {
         user.value = userProfile;
         session.value = {
           access_token: supabaseSession.access_token,
@@ -305,13 +291,19 @@ export const useAuthStore = defineStore('auth', () => {
           expires_at: supabaseSession.expires_at!,
         };
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('检查当前会话失败:', error);
     }
-    finally {
-      isCheckingSession = false;
+  }
+
+  function destroyAuth() {
+    if (unsubscribeAuthListener) {
+      unsubscribeAuthListener();
+      unsubscribeAuthListener = null;
     }
+    authListenerInitialized = false;
+    user.value = null;
+    session.value = null;
   }
 
   return {
@@ -331,6 +323,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearError,
     initializeAuth,
     checkCurrentSession,
+    destroyAuth,
   };
 }, {
   persist: {
@@ -350,19 +343,20 @@ export const useAuthStore = defineStore('auth', () => {
           const data = JSON.parse(value);
           const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
 
+          // 检查数据是否过期
           if (data.timestamp && (Date.now() - data.timestamp > sevenDaysInMs)) {
             localStorage.removeItem('auth-session');
             return { user: null, session: null };
           }
 
+          // 检查会话是否过期
           if (data.session && data.session.expires_at <= Date.now() / 1000) {
             localStorage.removeItem('auth-session');
             return { user: null, session: null };
           }
 
           return { user: data.user, session: data.session };
-        }
-        catch (error) {
+        } catch (error) {
           console.error('反序列化用户会话失败:', error);
           localStorage.removeItem('auth-session');
           return { user: null, session: null };

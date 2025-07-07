@@ -3,19 +3,10 @@ export interface UserProfile {
   email: string
   name?: string
   avatar?: string
+  provider?: string
   created_at: string
   updated_at: string
-  // 当前认证用户的信息
-  auth_user_id?: string
-  provider?: string
-}
-
-export interface UserAuthMapping {
-  id: string
-  auth_user_id: string
-  profile_id: string
-  provider: string
-  created_at: string
+  // 不再需要 auth_user_id，因为我们直接使用 Supabase Auth 的用户 ID
 }
 
 export interface LoginRequest {
@@ -45,6 +36,7 @@ export interface AuthResponse {
     user: UserProfile
   } | null
   error?: string
+  message?: string // 用于成功但需要验证的消息
 }
 
 export interface AuthState {
@@ -57,3 +49,13 @@ export interface AuthState {
   isAuthenticated: boolean
   loading: boolean
 }
+
+// 简化的认证事件类型
+export type AuthEvent = 'INITIAL_SESSION' | 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED'
+
+// 简化的认证状态变更回调
+export type AuthStateChangeCallback = (
+  event: AuthEvent,
+  session: AuthState['session'] | null,
+  user: UserProfile | null
+) => void
