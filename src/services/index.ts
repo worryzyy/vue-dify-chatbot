@@ -4,6 +4,7 @@ export * from './dify/application-service'
 export * from './dify/conversation-service'
 export * from './dify/upload-service'
 export * from './auth'
+export * from './dify-app'
 
 import { ChatService } from './dify/chat-service'
 import { ApplicationService } from './dify/application-service'

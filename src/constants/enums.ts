@@ -12,6 +12,14 @@ export enum ApplicationMode {
   WORKFLOW_MODE = 'workflow'
 }
 
+export enum DifyAppMode {
+  WORKFLOW = 'workflow',           // 工作流
+  ADVANCED_CHAT = 'advanced-chat', // Chatflow
+  CHAT = 'chat',                   // 聊天助手
+  AGENT_CHAT = 'agent-chat',       // Agent
+  COMPLETION = 'completion'        // 文本生成
+}
+
 export enum ApplicationStatus {
   ENABLED = 'enabled',
   DISABLED = 'disabled'

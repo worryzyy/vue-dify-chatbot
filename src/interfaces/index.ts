@@ -3,6 +3,7 @@ export * from './auth';
 export * from './chat';
 export * from './conversation';
 export * from './upload';
+export * from './dify-app';
 
 export interface ApiResponse<T = any> {
   statusCode: number;
