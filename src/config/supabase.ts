@@ -7,4 +7,8 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('缺少 Supabase 环境变量配置')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// 在开发环境使用代理路径
+const isDev = import.meta.env.DEV
+const apiUrl = isDev ? 'http://localhost:5173/api' : supabaseUrl
+
+export const supabase = createClient(apiUrl, supabaseKey)

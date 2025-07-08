@@ -1,11 +1,12 @@
 import { HttpService } from '../http/base'
+import { createStreamRequest } from '../../utils/http-client'
 import type {
   SendMessageRequest,
   SendMessageResponse,
   MessageHistoryResponse,
   MessageFeedback,
   StreamMessage
-} from '@/interfaces'
+} from '../../interfaces'
 
 export class ChatService extends HttpService {
   async submitMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
@@ -43,39 +44,24 @@ export class ChatService extends HttpService {
     }
 
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const streamRequest = createStreamRequest(`${this.baseURL}${endpoint}`, {
+        skipAuth: true,
         method: 'POST',
+        data: requestData,
         headers: {
           ...this.defaultHeaders,
           'Accept': 'text/event-stream'
-        },
-        body: JSON.stringify(requestData)
+        }
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('无法获取响应流读取器')
-      }
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) {
-          onComplete?.()
-          break
+      for await (const chunk of streamRequest.stream<string>()) {
+        if (chunk.error) {
+          onError?.(new Error(chunk.error))
+          continue
         }
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
+        // 解析SSE格式的数据
+        const lines = chunk.result.split('\n')
         for (const line of lines) {
           if (line.trim() === '') continue
           
@@ -93,6 +79,8 @@ export class ChatService extends HttpService {
           }
         }
       }
+
+      onComplete?.()
     } catch (error) {
       onError?.(error as Error)
       throw error

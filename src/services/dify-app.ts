@@ -1,6 +1,15 @@
 import { supabase } from '../config/supabase'
-import type { DifyApp, DifyApiAppInfo, CreateDifyAppRequest, UpdateDifyAppRequest, DifyAppResponse } from '@/interfaces/dify-app'
+import type { DifyApiAppInfo, CreateDifyAppRequest, UpdateDifyAppRequest, DifyAppResponse } from '../interfaces/dify-app'
 import { getDifyAppModeName } from '../utils/dify-app-mode'
+import { get } from '../api'
+
+// 专门为fetchAppInfo方法定义的响应类型
+interface DifyApiInfoResponse {
+  success: boolean
+  data?: DifyApiAppInfo
+  error?: string
+  message?: string
+}
 
 export class DifyAppService {
   /**
@@ -62,7 +71,10 @@ export class DifyAppService {
       // 首先从 Dify API 获取应用信息
       const appInfoResult = await this.fetchAppInfo(appData.base_url, appData.api_key)
       if (!appInfoResult.success) {
-        return appInfoResult
+        return {
+          success: false,
+          error: appInfoResult.error || '获取应用信息失败'
+        }
       }
 
       const appInfo = appInfoResult.data
@@ -85,7 +97,9 @@ export class DifyAppService {
           base_url: appData.base_url,
           api_key: appData.api_key,
           icon_url: appInfo.icon || '🤖',
-          app_type: getDifyAppModeName(appInfo.mode || 'chat')
+          app_type: getDifyAppModeName(appInfo.mode || 'chat'),
+          tags: appInfo.tags || [],
+          author_name: appInfo.author_name || ''
         })
         .select()
         .single()
@@ -243,70 +257,54 @@ export class DifyAppService {
   /**
    * 从 Dify API 获取应用信息
    */
-  static async fetchAppInfo(baseUrl: string, apiKey: string): Promise<{ success: boolean; data?: DifyApiAppInfo; error?: string; message?: string }> {
+  static async fetchAppInfo(baseUrl: string, apiKey: string): Promise<DifyApiInfoResponse> {
     try {
       // 构建应用信息 API 端点
       const infoUrl = `${baseUrl.replace(/\/$/, '')}/info`
       
-      const response = await fetch(infoUrl, {
-        method: 'GET',
+      const data = await get<DifyApiAppInfo>(infoUrl, undefined, {
+        skipAuth: true,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         }
       })
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `获取应用信息失败: ${response.status} ${response.statusText}`
-        }
-      }
-
-      const data = await response.json() as DifyApiAppInfo
       
       return {
         success: true,
         data: data,
         message: '应用信息获取成功'
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('获取 Dify 应用信息异常:', error)
       return {
         success: false,
-        error: '获取应用信息异常'
+        error: error.message || '获取应用信息异常'
       }
     }
   }
   static async testAppConnection(baseUrl: string, apiKey: string): Promise<DifyAppResponse> {
     try {
       // 构建测试 API 端点
-      const testUrl = `${baseUrl.replace(/\/$/, '')}/v1/parameters`
+      const testUrl = `${baseUrl.replace(/\/$/, '')}/parameters`
       
-      const response = await fetch(testUrl, {
-        method: 'GET',
+      await get(testUrl, undefined, {
+        skipAuth: true,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         }
       })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `连接测试失败: ${response.status} ${response.statusText}`
-        }
-      }
-
       return {
         success: true,
         message: '连接测试成功'
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('测试 Dify 应用连接异常:', error)
       return {
         success: false,
-        error: '连接测试异常'
+        error: error.message || '连接测试异常'
       }
     }
   }

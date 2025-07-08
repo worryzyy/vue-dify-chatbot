@@ -7,6 +7,8 @@ export interface DifyApp {
   api_key: string
   icon_url?: string
   app_type: string
+  tags?: string[]
+  author_name?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -17,6 +19,8 @@ export interface DifyApiAppInfo {
   description?: string
   icon?: string
   mode: string
+  tags?: string[]
+  author_name?: string
 }
 
 export interface CreateDifyAppRequest {
@@ -30,6 +34,8 @@ export interface UpdateDifyAppRequest {
   base_url?: string
   api_key?: string
   icon_url?: string
+  tags?: string[]
+  author_name?: string
   is_active?: boolean
 }
 
